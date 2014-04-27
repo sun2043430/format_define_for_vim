@@ -1,0 +1,112 @@
+" copy this code in your "vimrc" file
+" use visual mode to select the code snippets and press 'f', that's all!
+
+vmap f <ESC>: call FormatDefine()<CR>
+function! FormatDefine()
+  let [lnum1, col1] = getpos("'<")[1:2]
+  let [lnum2, col2] = getpos("'>")[1:2]
+  let lines = getline(lnum1, lnum2)
+  
+  if (1 == col2)
+    let lnum2 -= 1
+  endif
+  
+  let array = []
+  let max_len_part1 = 0
+  let max_len_part2 = 0
+  
+  let long_space = "                                                                                     "
+  let a_line = getline(lnum1)
+  let prefix_space = 0
+  while (' ' == a_line[prefix_space])
+    let prefix_space += 1
+  endwhile
+  let prefix = long_space[1:prefix_space]
+  
+  for i in range(lnum1, lnum2)
+    let a_line = getline(i)
+    let a_line_array = []
+    let pos_equal_sign = stridx(a_line, '=')
+    let len = strlen(a_line)
+
+    if (-1 == pos_equal_sign)
+      let tail = len - 1
+      let part3 = ""
+    else
+      let tail = pos_equal_sign - 1
+      let part3 = a_line[pos_equal_sign : (len-1)]
+    endif
+
+    while (' ' == a_line[tail] && tail > 0)
+      let tail -= 1
+    endwhile
+
+    let pos_space = strridx(a_line, ' ', tail)
+    let pos_right_brack = strridx(a_line, '>', tail)
+    let pos_point = strridx(a_line, '*', tail)
+
+    let start = (pos_space > pos_right_brack) ? pos_space : pos_right_brack
+    let start = (start > pos_point) ? start : pos_point
+    
+    if (-1 == start)
+      let part2 = a_line[0 : tail]
+      let part1 = ""
+    else
+      let part2 = a_line[start+1 : tail]
+      
+      while (' ' == a_line[start] && start > 0)
+        let start -= 1
+      endwhile
+
+      if (0 == start)
+        let part1 = ""
+      else
+        let begin = 0
+        while (' ' == a_line[begin])
+          let begin += 1
+        endwhile
+        let part1 = a_line[begin : start]
+      endif
+
+    endif
+	
+	if (0 == strlen(part1))
+	  let part1 = part2
+	  let part2 = ""
+	endif
+	
+	if ( ' ' != part3[1])
+	  let part3 = part3[0:0] . " " . part3[1:-1]
+	endif
+
+    call add(a_line_array, part1)
+    call add(a_line_array, part2)
+    call add(a_line_array, part3)
+    
+	let len_tmp = strlen(part1)
+	if (max_len_part1 < len_tmp)
+	  let max_len_part1 = len_tmp
+	endif
+	let len_tmp = strlen(part2)
+	if (max_len_part2 < len_tmp)
+	  let max_len_part2 = len_tmp
+	endif
+	
+    call add(array, a_line_array)
+  endfor
+  
+  let max_len_part1 = (max_len_part1 + 4)/4 * 4
+  let max_len_part2 = (max_len_part2 + 4)/4 * 4
+	
+  for i in range(0, lnum2 - lnum1)
+    let part1 = array[i][0]
+	let len1 = strlen(part1)
+	let part2 = array[i][1]
+	let len2 = strlen(part2)
+	let part3 = array[i][2]
+	call setline(lnum1+i, prefix . part1 . long_space[1:(max_len_part1-len1)] . 
+	                             \ part2 . long_space[1:(max_len_part2-len2)] . 
+								 \ part3)
+  endfor
+
+endfunction
